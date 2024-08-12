@@ -1,0 +1,89 @@
+[tool.poetry]
+name = "python-linux-container-runtime"
+version = "0.1.0"
+description = "A simple Linux container runtime implemented in Python."
+authors = ["alihezarpisheh <alihezarpisheh@outlook.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode=false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pytest = "^8.3.2"
+pytest-cov = "^5.0.0"
+pytest-randomly = "^3.15.0"
+isort = "^5.13.2"
+mypy = "^1.11.1"
+ruff = "^0.5.7"
+pre-commit = "^3.8.0"
+tox = "^4.17.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.ruff]
+line-length = 88
+lint.select = [
+    "E",  # pycodestyle
+    "W",  # pycodestyle
+    "F",  # pyflakes
+    "UP",  # pyupgrade
+    "C90",  # mccabe
+    "D",  # pydocstyle
+    "I",  # isort
+    "RUF",  # Ruff specific rules
+]
+lint.ignore = ["D104"]
+lint.exclude = ["*/alembic/*"]
+
+lint.fixable = [
+    "F401",  # Remove unused imports.
+    "RUF100",  # Remove unused noqa comments.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/__init__.py" = ["F401"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+
+exclude = "tests/"
+
+
+[tool.pytest.ini_options]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "-v",
+]
+markers = [
+    "smoke: Tests focusing on essential and critical functionality",
+    "exception: Tests checking how the application handles exceptions and error scenarios",
+    "asyncio: Asynchronous tests using the pytest-asyncio plugin",
+]
+required_plugins = [
+    "pytest-randomly",
+    "pytest-cov",
+]
+
+testpaths = "tests"
+xfail_strict = true
+
+
+[tool.coverage.run]
+parallel = true

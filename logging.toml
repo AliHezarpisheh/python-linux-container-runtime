@@ -1,0 +1,20 @@
+# Sample loggin configuration.
+version = 1
+disable_existing_loggers = true
+
+[formatters.coreFormatter]
+format = "%(asctime)s - [%(levelname)s] - %(name)s - %(lineno)d - %(message)s - Thread: %(thread)d - Process: %(process)d"
+datefmt = "%Y-%m-%d %H:%M:%S"
+
+[handlers.coreHandler]
+level = "DEBUG"
+class = "logging.handlers.RotatingFileHandler"
+filename = "logs/logfile.log"
+maxBytes = 1048576   # 1 MB
+backupCount = 10
+formatter = "coreFormatter"
+
+[loggers.""]
+level = "DEBUG"
+handlers = ["coreHandler",]
+propagate = true
