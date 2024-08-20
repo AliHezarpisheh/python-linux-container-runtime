@@ -4,40 +4,35 @@ import ctypes
 import os
 
 import flags
+from groups import create_control_group
+from namespaces import libc, set_hostname, unshare
 
-libc = ctypes.CDLL("libc.so.6", use_errno=True)
 
-
-def unshare(flag: int) -> None:
+def run_child_proc() -> None:
     """
-    Unshares the specified kernel namespace.
+    Child process routine for setting up the container environment.
 
-    This function is a Python wrapper around the `unshare` system call, which
-    disassociates parts of the process execution context. It can be used to
-    create new namespaces for a process.
-
-    Parameters
-    ----------
-    flag : int
-        The namespace flag to be unshared. Common flags include:
-        - `CLONE_NEWNS`: to unshare the mount namespace.
-        - `CLONE_NEWPID`: to unshare the PID namespace.
-        - `CLONE_NEWNET`: to unshare the network namespace.
-        - `CLONE_NEWUTS`: to unshare the UTS namespace (hostname).
-        - `CLONE_NEWIPC`: to unshare the IPC namespace.
-        - `CLONE_NEWUSER`: to unshare the user namespace.
+    This function is executed by the child process created through `libc.clone`.
+    It performs the following tasks:
+    1. Creates a control group for the process.
+    2. Unshares the mount and UTS namespaces for isolation.
+    3. Sets the hostname to "my-container".
+    4. Mounts a new `proc` filesystem at `/myroot/proc`.
+    5. Changes the root directory to `/myroot/` to simulate a containerized environment.
+    6. Launches a BusyBox shell as the init process in the new environment.
 
     Raises
     ------
     OSError
-        If the `unshare` system call fails, this function will raise an
-        OSError with the appropriate error number.
+        If any of the system calls fail, an OSError may be raised.
     """
-    result = libc.unshare(flag)
-
-    if result < 0:
-        err_no = ctypes.get_errno()
-        print(err_no)
+    create_control_group()
+    unshare(flags.CLONE_NEWNS | flags.CLONE_NEWUTS)
+    set_hostname("my-container")
+    os.system("mount -t proc none /myroot/proc")
+    os.chroot("/myroot/")
+    os.chdir("/")
+    os.execvp("/bin/busybox", ["/bin/busybox", "sh"])
 
 
 def run() -> None:
@@ -61,18 +56,19 @@ def run() -> None:
 
     >>> run()
     """
-    pid = os.fork()
+    child_func_type = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+    child_func_c = child_func_type(run_child_proc)
 
-    if pid == 0:
-        unshare(flags.CLONE_NEWNS)
-        os.system("mount -t proc none /myroot/proc")
-        os.chroot("/myroot/")
-        os.chdir("/")
-        os.execvp("/bin/busybox", ["/bin/busybox", "sh"])
-    else:
-        rid, status = os.waitpid(pid, 0)
-        os.system("umount /myroot/proc")
-        print(rid, status)
+    stack = ctypes.c_void_p(libc.sbrk(0))
+
+    pid = libc.clone(
+        child_func_c,
+        stack,
+        flags.CLONE_NEWNS | flags.CLONE_NEWPID,
+        flags.CLONE_NEWUTS | flags.CLONE_NEWCGROUP | 17,
+    )
+    rid, status = os.waitpid(pid, 0)
+    print(rid, status)
 
 
 if __name__ == "__main__":
